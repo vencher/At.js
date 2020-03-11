@@ -23,6 +23,7 @@ https://github.com/ichord/At.js/wiki
 
 * `textarea` - Chrome, Safari, Firefox, IE7+ (maybe IE6)
 * `contentEditable` - Chrome, Safari, Firefox, IE9+
+* `umeditor` - Chrome, Safari, Firefox, IE8+
 
 ### Features Preview
 
@@ -55,13 +56,25 @@ Simply include the following files in your HTML and you are good to go.
 <script src="js/jquery.atwho.js"></script>
 ```
 
+use for inputor
 ```javascript
 $('#inputor').atwho({
     at: "@",
     data:['Peter', 'Tom', 'Anne']
 })
 ```
-
+use for umeditor
+```javascript
+var um = UM.createEditor('htmleditor');
+var $um = $(um);
+$um.data('controller', 'umeditor');
+$um.atwho({
+    at: "@",
+    startWithSpace: false,
+    suffix: '',
+    data:['Peter', 'Tom', 'Anne']
+})
+```
 #### Bower & Component
 For installing using Bower you can use `jquery.atwho` and for Component please use `ichord/At.js`.
 
