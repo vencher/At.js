@@ -16,7 +16,8 @@
     "node": ">= 0.6.0"
   },
   "scripts": {
-    "test": "gulp test"
+    "test": "gulp test",
+    "test": "gulp build"
   },
   "peerDependencies": {
     "jquery": ">=1.7.0 <4.0.0"
@@ -32,6 +33,7 @@
     "gulp-jasmine": "^2.2.1",
     "gulp-jasmine-phantom": "^2.0.1",
     "gulp-rename": "^1.2.2",
+    "gulp-sequence": "^1.0.0",
     "gulp-uglify": "^1.5.1",
     "gulp-umd": "^0.2.0",
     "gulp-util": "^3.0.7",

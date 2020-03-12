@@ -9,6 +9,7 @@ var gulp = require('gulp'),
     bump = require('gulp-bump'),
     header = require('gulp-header'),
     debug = require('gulp-debug'),
+    gulpSequence = require('gulp-sequence'),
     util = require('gulp-util');
 
 var name = 'jquery.atwho';
@@ -36,7 +37,7 @@ gulp.task('concat', function() {
 });
 
 gulp.task('umd', function() {
-  gulp.src('build/' + name + ".js")
+    return  gulp.src('build/' + name + ".js")
     .pipe(umd({template: "umd.template.js"}))
     .pipe(gulp.dest('build/js'));
 });
@@ -68,8 +69,8 @@ gulp.task('compress', function() {
         .pipe(rename({suffix: '.min'}))
         .pipe(gulp.dest('dist/js'));
 
-    gulp.src('src/jquery.atwho.css').pipe(gulp.dest('dist/css'))
-    gulp.src('dist/css/' + name + '.css')
+    gulp.src('src/jquery.atwho.css')
+        .pipe(gulp.dest('dist/css'))
         .pipe(cssmin())
         .pipe(rename({suffix: '.min'}))
         .pipe(gulp.dest('dist/css'));
@@ -99,5 +100,28 @@ gulp.task('test', function () {
         }));
 });
 
+gulp.task('concat-js', function() {
+    fileList = [
+        'src-js/default.js',
+        'src-js/app.js',
+        'src-js/controller.js',
+        'src-js/textareaController.js',
+        'src-js/editableController.js',
+        'src-js/umeditorController.js',
+        'src-js/model.js',
+        'src-js/view.js',
+        'src-js/api.js'
+    ]
+    return gulp.src(fileList)
+        .pipe(concat(name + ".js"))
+        .pipe(gulp.dest('build'));
+});
+gulp.task("mark-js", function() {
+    return gulp.src('build/js/' + name + '.js')
+        .pipe(gulp.dest('dist/js/'))
+});
 gulp.task('compile', ['coffee', 'umd', 'concat']);
 gulp.task('default', ['compile', 'bump', 'mark', 'compress']);
+gulp.task('build', ['concat-js'], function(cb) {
+    gulpSequence('concat-js',  'umd', 'mark-js', 'compress')(cb);
+});

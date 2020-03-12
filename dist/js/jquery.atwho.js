@@ -1,9 +1,3 @@
-/**
- * at.js - 1.5.4
- * Copyright (c) 2018 chord.luo <chord.luo@gmail.com>;
- * Homepage: http://ichord.github.com/At.js
- * License: MIT
- */
 (function (root, factory) {
   if (typeof define === 'function' && define.amd) {
     // AMD. Register as an anonymous module unless amdModuleId is set
@@ -88,7 +82,7 @@ DEFAULT_CALLBACKS = {
     });
   },
   tplEval: function(tpl, map) {
-    var error, error1, template;
+    var error, template;
     template = tpl;
     try {
       if (typeof tpl !== 'string') {
@@ -133,6 +127,12 @@ App = (function() {
     this.listen();
   }
 
+  // controller注册
+  App.controllerClazz = {};
+  App.addController = function (name, controllerClazz) {
+      App.controllerClazz[name] = controllerClazz;
+  };
+
   App.prototype.createContainer = function(doc) {
     var ref;
     if ((ref = this.$el) != null) {
@@ -142,7 +142,7 @@ App = (function() {
   };
 
   App.prototype.setupRootElement = function(iframe, asRoot) {
-    var error, error1;
+    var error;
     if (asRoot == null) {
       asRoot = false;
     }
@@ -151,7 +151,7 @@ App = (function() {
       this.document = iframe.contentDocument || this.window.document;
       this.iframe = iframe;
     } else {
-      this.document = this.$inputor[0].ownerDocument;
+      this.document = this.$inputor[0].ownerDocument || window.document;
       this.window = this.document.defaultView || this.document.parentWindow;
       try {
         this.iframe = this.window.frameElement;
@@ -193,8 +193,16 @@ App = (function() {
   };
 
   App.prototype.reg = function(flag, setting) {
-    var base, controller;
-    controller = (base = this.controllers)[flag] || (base[flag] = this.$inputor.is('[contentEditable]') ? new EditableController(this, flag) : new TextareaController(this, flag));
+    var base = this.controllers, controller;
+    if(base[flag]) {
+        controller = base = base[flag];
+    }else if(this.$inputor.data('controller') && App.controllerClazz[this.$inputor.data('controller')]) {
+        controller = base[flag] = new App.controllerClazz[this.$inputor.data('controller')](this, flag);
+    } else {
+        controller = base[flag] = this.$inputor.is('[contentEditable]')
+            ? new EditableController(this, flag) : new TextareaController(this, flag);
+    }
+
     if (setting.alias) {
       this.aliasMaps[setting.alias] = flag;
     }
@@ -210,6 +218,7 @@ App = (function() {
           ref.view.hide();
         }
         _this.isComposing = true;
+        console.log("compositionstart");
         return null;
       };
     })(this)).on('compositionend', (function(_this) {
@@ -218,6 +227,7 @@ App = (function() {
         setTimeout(function(e) {
           return _this.dispatch(e);
         });
+        console.log("compositionend");
         return null;
       };
     })(this)).on('keyup.atwhoInner', (function(_this) {
@@ -411,7 +421,7 @@ Controller = (function() {
   };
 
   Controller.prototype.callDefault = function() {
-    var args, error, error1, funcName;
+    var args, error, funcName;
     funcName = arguments[0], args = 2 <= arguments.length ? slice.call(arguments, 1) : [];
     try {
       return DEFAULT_CALLBACKS[funcName].apply(this, args);
@@ -437,7 +447,7 @@ Controller = (function() {
   };
 
   Controller.prototype.getOpt = function(at, default_value) {
-    var e, error1;
+    var e;
     try {
       return this.setting[at];
     } catch (error1) {
@@ -551,6 +561,7 @@ Controller = (function() {
       }
     };
     this.expectedQueryCBId = this._generateQueryCBId();
+    // _callback 上下文指向this
     return this.model.query(query.text, $.proxy(_callback, this, this.expectedQueryCBId));
   };
 
@@ -854,6 +865,179 @@ EditableController = (function(superClass) {
 
 })(Controller);
 
+var UmeditorController,
+  extend = function(child, parent) { for (var key in parent) { if (hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor(); child.__super__ = parent.prototype; return child; },
+  hasProp = {}.hasOwnProperty;
+
+UmeditorController = (function(superClass) {
+  extend(UmeditorController, superClass);
+
+    // 获取同一个节点前面所有节点的内容
+    function getPrevElemsContent(elem) {
+        var $elem = $(elem);
+        var preText = [];
+        var isBreak = false;
+        while($elem.prev().length>0) {
+            var $prevNode = $elem.prev();
+            if($prevNode.is('br')) {
+                isBreak = true;
+                break;
+            }
+            preText.push($prevNode.text());
+            $elem = $prevNode;
+        }
+        return {
+            isBreak: false,
+            preText: preText.join('')
+        };
+    }
+
+  function UmeditorController() {
+    var instance = UmeditorController.__super__.constructor.apply(this, arguments);
+    this.um = this.$inputor[0];
+    this.listen();
+
+    this.view.$el.css('z-index', this.um.getOpt('zIndex') + 1);
+
+    return instance;
+  }
+
+  UmeditorController.prototype.catchQuery = function() {
+
+    // 获取光标位置
+    var caretObj = um.selection.getRange();
+    var endElem = caretObj.endContainer;
+    var endOffset = caretObj.endOffset;
+
+    // 截取内容
+    var $elem = $(endElem);
+    var subtext = $elem.text().substring(0, endOffset);
+    var $parentElem = $elem;
+    var maxDepth = 20;
+    // 遇到换行标签p，或者遇到body容器，最大20层
+    while($parentElem.length > 0
+    && !$parentElem.is('p') && this.um.$body[0] !== $parentElem[0]
+    && maxDepth > 0) {
+      preContent = getPrevElemsContent($elem);
+      subtext = preContent.preText + subtext;
+      if(preContent.isBreak) {
+          break;
+      }
+      $parentElem = $parentElem.parent();
+      maxDepth --;
+    }
+
+    var query = this.callbacks("matcher").call(this, this.at, subtext, this.getOpt('startWithSpace'), this.getOpt("acceptSpaceBar"));
+    var isString = typeof query === 'string';
+    if (isString && query.length < this.getOpt('minLen', 0)) {
+      return;
+    }
+    if (isString && query.length <= this.getOpt('maxLen', 20)) {
+      var matchLength = query.length;
+      query = {
+          'text': query,
+          'container': caretObj.endContainer,
+          'endOffset': caretObj.endOffset,
+          'matchLength': matchLength
+      };
+      this.trigger("matched", [this.at, query.text]);
+    } else {
+      query = null;
+      this.view.hide();
+    }
+    return this.query = query;
+  };
+
+  UmeditorController.prototype.rect = function() {
+      var query = this.query;
+      if(!query)
+          return {};
+
+      var container = query.container, endOffset = query.endOffset;
+      var $elem = $(container);
+      // 获取标签的长度
+      var subtext = $elem.text().substring(0, endOffset);
+      // 如果是text
+      if('#text' === container.nodeName) {
+          $elem = $elem.parent();
+      }
+      // 计算定位
+      var offset, width, height;
+      var $cloneElem = $elem.clone();
+      $cloneElem.hide().css('float', 'left').text(subtext).prependTo($elem);
+      offset = $elem.offset(), width = $cloneElem.width(), height =$cloneElem.height();
+      $cloneElem.remove();
+
+      var scaleBottom = this.app.document.selection ? 0 : 2;
+      return {
+          left: offset.left + width,
+          top: offset.top + height,
+          bottom: offset.top + height + scaleBottom
+      };
+  };
+
+  UmeditorController.prototype.insert = function(content, $li) {
+      var container = this.query.container;
+      var $container = $(container);
+      var source = $container.text();
+      var startStr = source.slice(0, this.query.endOffset - this.query.matchLength - this.at.length);
+
+      var suffix = (suffix = this.getOpt('suffix')) === "" ? suffix : suffix || " ";
+      var text = "" + startStr + content + suffix + (source.slice(this.query.endOffset || 0));
+      if('#text' === container.nodeName) {
+          container.nodeValue = text;
+      }else{
+          $container.text(text);
+      }
+
+      // 聚焦
+      this.um.selection.getRange()
+          .setStart(container, this.query.endOffset + content.length - this.query.matchLength - this.at.length)
+          .setCursor(!1, !0);
+
+      // 触发change事件
+      this.um.fireEvent("contentchange");
+  };
+
+    /**
+     * app的listen不适用于umeditor，要中转一层
+     */
+    UmeditorController.prototype.listen = function() {
+
+        var events = [
+            'keyup',
+            'keydown',
+            'blur',
+            'click'
+        ];
+        for(var i=0; i<events.length; i++) {
+            this.um.addListener(events[i], function (eventKey, event) {
+                if(eventKey === 'blur' || eventKey === 'focus') {
+                    // 不触发um的属性方法
+                    event.preventDefault();
+                    $(this).trigger(event);
+                }else{
+                    $(this).trigger(event);
+                }
+            });
+        }
+        var _this = this;
+        this.um.addListener('ready', function() {
+            _this.um.$body.on('scroll', function() {
+                $(_this.um).trigger('scroll');
+            });
+        });
+
+        this.um.addListener('beforeenterkeydown', function(eventKey, event) {
+            return !!_this.expectedQueryCBId;
+        });
+    };
+
+  return UmeditorController;
+
+})(Controller);
+
+App.addController('umeditor', UmeditorController);
 var Model;
 
 Model = (function() {
@@ -1125,6 +1309,7 @@ View = (function() {
 var Api;
 
 Api = {
+  // 加载数据
   load: function(at, data) {
     var c;
     if (c = this.controller(at)) {
@@ -1158,23 +1343,24 @@ Api = {
   }
 };
 
+// 支持自定义inputer，只要提供接口及数据
 $.fn.atwho = function(method) {
   var _args, result;
   _args = arguments;
   result = null;
-  this.filter('textarea, input, [contenteditable=""], [contenteditable=true]').each(function() {
-    var $this, app;
-    if (!(app = ($this = $(this)).data("atwho"))) {
+
+  var $this, app;
+  if (!(app = ($this = $(this)).data("atwho"))) {
       $this.data('atwho', (app = new App(this)));
-    }
-    if (typeof method === 'object' || !method) {
-      return app.reg(method.at, method);
-    } else if (Api[method] && app) {
-      return result = Api[method].apply(app, Array.prototype.slice.call(_args, 1));
-    } else {
-      return $.error("Method " + method + " does not exist on jQuery.atwho");
-    }
-  });
+  }
+  if (typeof method === 'object' || !method) {
+      app.reg(method.at, method);
+  } else if (Api[method] && app) {
+      result = Api[method].apply(app, Array.prototype.slice.call(_args, 1));
+  } else {
+      $.error("Method " + method + " does not exist on jQuery.atwho");
+  }
+
   if (result != null) {
     return result;
   } else {
@@ -1182,6 +1368,7 @@ $.fn.atwho = function(method) {
   }
 };
 
+// 默认设置
 $.fn.atwho["default"] = {
   at: void 0,
   alias: void 0,

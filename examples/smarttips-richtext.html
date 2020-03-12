@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        #htmleditor {
+            width: 600px;
+            height: 300px;
+        }
+    </style>
+    <link href="../dist/css/jquery.atwho.css" rel="stylesheet">
+    <link rel="stylesheet" type="text/css" href="http://yytdemo.uf-tobacco.com/yytui/yyt-resources-common/pc/openlib/umeditor/1.2.2/themes/default/css/umeditor.min.css"/>
+    <script src="http://yytdemo.uf-tobacco.com/yytui/yyt-resources-common/pc/openlib/umeditor/1.2.2/umeditor.config.js"></script>
+    <script src="http://yytdemo.uf-tobacco.com/yytui/yyt-resources-common/pc/openlib/jquery/1.12.4/jquery.js?v=1.0.12"></script>
+    <script src="http://yytdemo.uf-tobacco.com/yytui/yyt-resources-common/pc/openlib/umeditor/1.2.2/umeditor.min.js"></script>
+    <script src="./jquery.caret.js"></script>
+    <script type="text/javascript" src="../dist/js/jquery.atwho.js"></script>
+</head>
+<body>
+    <div id="htmleditor" contenteditable=true></div>
+
+    <script>
+
+        var um = UM.createEditor('htmleditor', {
+            "initialFrameWidth": '100%', //初始化编辑器宽度,默认500
+            "initialFrameHeight": '100%',  //初始化编辑器高度,默认500
+            "zIndex": 50
+        });
+
+        var $um = $(um);
+        $um.data('controller', 'umeditor');
+        $um.atwho({
+            at: "@",
+            startWithSpace: false,
+            suffix: '',
+            data:['Peter', 'Tom', 'Anne']
+        });
+    </script>
+</body>
+</html>
